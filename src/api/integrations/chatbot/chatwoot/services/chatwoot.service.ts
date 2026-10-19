@@ -733,36 +733,41 @@ export class ChatwootService {
           const group = await this.waMonitor.waInstances[instance.instanceName].client.groupMetadata(chatId);
           this.logger.verbose(`Group metadata: JID:${group.JID} - Subject:${group?.subject || group?.Name}`);
 
-          const participantJid = isLid && !body.key.fromMe ? body.key.participantAlt : body.key.participant;
+          const participantJid =
+            (isLid && !body.key.fromMe ? body.key.participantAlt : body.key.participant) || body.participant;
           nameContact = `${group.subject} (GROUP)`;
 
-          const picture_url = await this.waMonitor.waInstances[instance.instanceName].profilePicture(
-            participantJid.split('@')[0],
-          );
-          this.logger.verbose(`Participant profile picture URL: ${JSON.stringify(picture_url)}`);
-
-          const findParticipant = await this.findContact(instance, participantJid.split('@')[0]);
-
-          if (findParticipant) {
-            this.logger.verbose(
-              `Found participant: ID:${findParticipant.id} - Name: ${findParticipant.name} - identifier: ${findParticipant.identifier}`,
+          if (participantJid) {
+            const picture_url = await this.waMonitor.waInstances[instance.instanceName].profilePicture(
+              participantJid.split('@')[0],
             );
-            if (!findParticipant.name || findParticipant.name === chatId) {
-              await this.updateContact(instance, findParticipant.id, {
-                name: body.pushName,
-                avatar_url: picture_url.profilePictureUrl || null,
-              });
+            this.logger.verbose(`Participant profile picture URL: ${JSON.stringify(picture_url)}`);
+
+            const findParticipant = await this.findContact(instance, participantJid.split('@')[0]);
+
+            if (findParticipant) {
+              this.logger.verbose(
+                `Found participant: ID:${findParticipant.id} - Name: ${findParticipant.name} - identifier: ${findParticipant.identifier}`,
+              );
+              if (!findParticipant.name || findParticipant.name === chatId) {
+                await this.updateContact(instance, findParticipant.id, {
+                  name: body.pushName,
+                  avatar_url: picture_url.profilePictureUrl || null,
+                });
+              }
+            } else {
+              await this.createContact(
+                instance,
+                participantJid.split('@')[0].split(':')[0],
+                filterInbox.id,
+                false,
+                body.pushName,
+                picture_url.profilePictureUrl || null,
+                participantJid,
+              );
             }
           } else {
-            await this.createContact(
-              instance,
-              participantJid.split('@')[0].split(':')[0],
-              filterInbox.id,
-              false,
-              body.pushName,
-              picture_url.profilePictureUrl || null,
-              participantJid,
-            );
+            this.logger.warn(`Participant JID not found for group ${chatId}; continuing conversation creation`);
           }
         }
 
