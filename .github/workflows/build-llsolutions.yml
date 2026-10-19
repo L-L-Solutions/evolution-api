@@ -36,7 +36,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/l-l-solutions/evolution-api:2.3.7-ll.1
+            ghcr.io/l-l-solutions/evolution-api:2.3.7-ll.2
             ghcr.io/l-l-solutions/evolution-api:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

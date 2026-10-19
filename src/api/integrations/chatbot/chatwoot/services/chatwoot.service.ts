@@ -733,8 +733,9 @@ export class ChatwootService {
           const group = await this.waMonitor.waInstances[instance.instanceName].client.groupMetadata(chatId);
           this.logger.verbose(`Group metadata: JID:${group.JID} - Subject:${group?.subject || group?.Name}`);
 
-          const participantJid =
-            (isLid && !body.key.fromMe ? body.key.participantAlt : body.key.participant) || body.participant;
+          const participantJid = body.key.fromMe
+            ? this.waMonitor.waInstances[instance.instanceName].wuid
+            : (isLid && body.key.participantAlt) || body.key.participant || body.participant;
           nameContact = `${group.subject} (GROUP)`;
 
           if (participantJid) {
@@ -2091,18 +2092,22 @@ export class ChatwootService {
 
           if (body.key.remoteJid.includes('@g.us')) {
             const participantName = body.pushName;
-            const rawPhoneNumber =
-              body.key.addressingMode === 'lid' && !body.key.fromMe && body.key.participantAlt
-                ? body.key.participantAlt.split('@')[0].split(':')[0]
-                : body.key.participant.split('@')[0].split(':')[0];
-            const formattedPhoneNumber = parsePhoneNumberFromString(`+${rawPhoneNumber}`).formatInternational();
 
             let content: string;
 
             if (!body.key.fromMe) {
-              content = bodyMessage
-                ? `**${formattedPhoneNumber} - ${participantName}:**\n\n${bodyMessage}`
-                : `**${formattedPhoneNumber} - ${participantName}:**`;
+              const participantJid =
+                (body.key.addressingMode === 'lid' && body.key.participantAlt) ||
+                body.key.participant ||
+                body.participant;
+              const rawPhoneNumber = participantJid?.split('@')[0].split(':')[0];
+              const formattedPhoneNumber = rawPhoneNumber
+                ? parsePhoneNumberFromString(`+${rawPhoneNumber}`)?.formatInternational()
+                : null;
+              const senderLabel = formattedPhoneNumber
+                ? `${formattedPhoneNumber} - ${participantName}`
+                : participantName;
+              content = bodyMessage ? `**${senderLabel}:**\n\n${bodyMessage}` : `**${senderLabel}:**`;
             } else {
               content = bodyMessage || '';
             }
@@ -2273,16 +2278,20 @@ export class ChatwootService {
 
         if (body.key.remoteJid.includes('@g.us')) {
           const participantName = body.pushName;
-          const rawPhoneNumber =
-            body.key.addressingMode === 'lid' && !body.key.fromMe && body.key.participantAlt
-              ? body.key.participantAlt.split('@')[0].split(':')[0]
-              : body.key.participant.split('@')[0].split(':')[0];
-          const formattedPhoneNumber = parsePhoneNumberFromString(`+${rawPhoneNumber}`).formatInternational();
 
           let content: string;
 
           if (!body.key.fromMe) {
-            content = `**${formattedPhoneNumber} - ${participantName}:**\n\n${bodyMessage}`;
+            const participantJid =
+              (body.key.addressingMode === 'lid' && body.key.participantAlt) ||
+              body.key.participant ||
+              body.participant;
+            const rawPhoneNumber = participantJid?.split('@')[0].split(':')[0];
+            const formattedPhoneNumber = rawPhoneNumber
+              ? parsePhoneNumberFromString(`+${rawPhoneNumber}`)?.formatInternational()
+              : null;
+            const senderLabel = formattedPhoneNumber ? `${formattedPhoneNumber} - ${participantName}` : participantName;
+            content = `**${senderLabel}:**\n\n${bodyMessage}`;
           } else {
             content = `${bodyMessage}`;
           }
